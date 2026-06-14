@@ -12,14 +12,31 @@ window.addEventListener("resize", resize);
 const intro = document.getElementById("intro");
 const startBtn = document.getElementById("startBtn");
 const nameInput = document.getElementById("nameInput");
-const personName = document.getElementById("personName");
+
 const message = document.getElementById("message");
+const personName = document.getElementById("personName");
 
 let started = false;
 let startTime = 0;
+let finished = false;
 
-const heartPath = [];
+const heartPoints = [];
 const particles = [];
+
+function heart(t) {
+
+    return {
+
+        x: 16 * Math.pow(Math.sin(t), 3),
+
+        y:
+            13 * Math.cos(t)
+            - 5 * Math.cos(2 * t)
+            - 2 * Math.cos(3 * t)
+            - Math.cos(4 * t)
+
+    };
+}
 
 class Particle {
 
@@ -28,12 +45,12 @@ class Particle {
         this.x = x;
         this.y = y;
 
-        this.vx = (Math.random() - 0.5) * 4;
-        this.vy = (Math.random() - 0.5) * 4;
+        this.vx = (Math.random() - 0.5) * 3;
+        this.vy = (Math.random() - 0.5) * 3;
 
-        this.life = 100;
+        this.life = 80;
+
         this.color = color;
-        this.size = Math.random() * 2 + 1;
     }
 
     update() {
@@ -46,42 +63,29 @@ class Particle {
 
         this.life--;
 
-        const alpha = this.life / 100;
+        ctx.save();
+
+        ctx.globalAlpha = this.life / 80;
 
         ctx.beginPath();
 
         ctx.fillStyle = this.color;
 
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 15;
         ctx.shadowColor = this.color;
-
-        ctx.globalAlpha = alpha;
 
         ctx.arc(
             this.x,
             this.y,
-            this.size,
+            2,
             0,
             Math.PI * 2
         );
 
         ctx.fill();
 
-        ctx.globalAlpha = 1;
+        ctx.restore();
     }
-}
-
-function heart(t) {
-
-    return {
-        x: 16 * Math.pow(Math.sin(t), 3),
-
-        y:
-            13 * Math.cos(t)
-            - 5 * Math.cos(2 * t)
-            - 2 * Math.cos(3 * t)
-            - Math.cos(4 * t)
-    };
 }
 
 startBtn.addEventListener("click", () => {
@@ -89,6 +93,7 @@ startBtn.addEventListener("click", () => {
     const name = nameInput.value.trim();
 
     if (!name) {
+
         alert("Ingresa un nombre");
         return;
     }
@@ -98,21 +103,68 @@ startBtn.addEventListener("click", () => {
     intro.style.opacity = "0";
 
     setTimeout(() => {
+
         intro.style.display = "none";
-    }, 1000);
+
+    }, 800);
 
     started = true;
     startTime = performance.now();
 });
+
+function drawHeart(color, beat = 1) {
+
+    ctx.save();
+
+    ctx.translate(
+        canvas.width / 2,
+        canvas.height / 2
+    );
+
+    ctx.scale(beat, beat);
+
+    ctx.translate(
+        -canvas.width / 2,
+        -canvas.height / 2
+    );
+
+    ctx.beginPath();
+
+    for (let i = 0; i < heartPoints.length; i++) {
+
+        const p = heartPoints[i];
+
+        if (i === 0) {
+
+            ctx.moveTo(p.x, p.y);
+
+        } else {
+
+            ctx.lineTo(p.x, p.y);
+        }
+    }
+
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    ctx.strokeStyle = color;
+
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = color;
+
+    ctx.stroke();
+
+    ctx.restore();
+}
 
 function animate() {
 
     requestAnimationFrame(animate);
 
     ctx.shadowBlur = 0;
-    ctx.shadowColor = "transparent";
 
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fillStyle = "rgba(0,0,0,0.15)";
     ctx.fillRect(
         0,
         0,
@@ -131,77 +183,86 @@ function animate() {
         Math.min(elapsed / duration, 1);
 
     const hue =
-        (performance.now() * 0.08) % 360;
+        (performance.now() * 0.05) % 360;
 
     const color =
         `hsl(${hue},100%,60%)`;
 
-    const t =
-        progress * Math.PI * 2;
+    if (progress < 1) {
 
-    const p = heart(t);
+        const t =
+            progress * Math.PI * 2;
 
-    const scale =
-        Math.min(
-            canvas.width,
-            canvas.height
-        ) / 35;
+        const p = heart(t);
 
-    const x =
-        canvas.width / 2 +
-        p.x * scale;
+        const scale =
+            Math.min(
+                canvas.width,
+                canvas.height
+            ) / 35;
 
-    const y =
-        canvas.height / 2 -
-        p.y * scale;
+        const x =
+            canvas.width / 2 +
+            p.x * scale;
 
-    heartPath.push({
-        x,
-        y,
-        color
-    });
+        const y =
+            canvas.height / 2 -
+            p.y * scale;
 
-    ctx.beginPath();
+        heartPoints.push({ x, y });
 
-    for (let i = 0; i < heartPath.length; i++) {
+        for (let i = 0; i < 8; i++) {
 
-        const point = heartPath[i];
-
-        if (i === 0) {
-
-            ctx.moveTo(
-                point.x,
-                point.y
-            );
-
-        } else {
-
-            ctx.lineTo(
-                point.x,
-                point.y
+            particles.push(
+                new Particle(
+                    x,
+                    y,
+                    color
+                )
             );
         }
-    }
 
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
+        drawHeart(color);
 
-    ctx.shadowBlur = 25;
-    ctx.shadowColor = color;
+        ctx.beginPath();
 
-    ctx.stroke();
+        ctx.fillStyle = color;
 
-    for (let i = 0; i < 10; i++) {
+        ctx.shadowBlur = 40;
+        ctx.shadowColor = color;
 
-        particles.push(
-            new Particle(
-                x,
-                y,
-                color
-            )
+        ctx.arc(
+            x,
+            y,
+            7,
+            0,
+            Math.PI * 2
         );
+
+        ctx.fill();
+
+    } else {
+
+        finished = true;
+
+        const beat =
+            1 +
+            Math.sin(
+                performance.now() * 0.004
+            ) * 0.025;
+
+        drawHeart(color, beat);
+
+        message.style.opacity = "1";
+
+        message.style.color = "#fff";
+
+        message.style.textShadow =
+            `
+            0 0 10px ${color},
+            0 0 20px ${color},
+            0 0 40px ${color}
+            `;
     }
 
     for (
@@ -215,46 +276,9 @@ function animate() {
         if (
             particles[i].life <= 0
         ) {
+
             particles.splice(i, 1);
         }
-    }
-
-    ctx.beginPath();
-
-    ctx.fillStyle = color;
-
-    ctx.shadowBlur = 40;
-    ctx.shadowColor = color;
-
-    ctx.arc(
-        x,
-        y,
-        7,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.fill();
-
-    if (progress >= 1) {
-
-        message.style.opacity = "1";
-
-        const pulse =
-            1 +
-            Math.sin(
-                performance.now() * 0.005
-            ) * 0.04;
-
-        message.style.transform =
-            `translate(-50%,-50%) scale(${pulse})`;
-
-        message.style.color = "#ffffff";
-
-        message.style.textShadow =
-            `0 0 10px ${color},
-             0 0 20px ${color},
-             0 0 40px ${color}`;
     }
 }
 
